@@ -1,0 +1,31 @@
+{
+  "_order": [
+    [
+      "fd571b5364c3660f96f5be1357e40ec4876616a6",
+      "schema.sql"
+    ],
+    [
+      "a0aee004e60a123557d533dadb2f4795ef887ba5",
+      "functions/api/channels.js"
+    ],
+    [
+      "7749a45ab283a9649194006286652d36b842420b",
+      "functions/api/channel/[id]/videos.js"
+    ],
+    [
+      "720ca559fab21ac56a89b9e94f693ac0a556fda2",
+      "functions/api/filter-unrated.js"
+    ],
+    [
+      "d110ec5d2830deaca392970f6a89980e5c0e81c6",
+      "functions/api/rate-video.js"
+    ]
+  ],
+  "blobs": {
+    "720ca559fab21ac56a89b9e94f693ac0a556fda2": "functions/api/filter-unrated.js",
+    "7749a45ab283a9649194006286652d36b842420b": "functions/api/channel/[id]/videos.js",
+    "a0aee004e60a123557d533dadb2f4795ef887ba5": "functions/api/channels.js",
+    "d110ec5d2830deaca392970f6a89980e5c0e81c6": "functions/api/rate-video.js",
+    "fd571b5364c3660f96f5be1357e40ec4876616a6": "schema.sql"
+  }
+}
