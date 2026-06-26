@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>YT Arena - YouTube Quality Ratings</title>
+    <meta name="description" content="Discover unbiased ratings for YouTube channels based on Quality, Credibility, Rationality, and Neutrality.">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Outfit:wght@500;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/style.css">
+</head>
+<body>
+    <div class="glow-bg glow-1"></div>
+    <div class="glow-bg glow-2"></div>
+    
+    <nav class="navbar">
+        <div class="nav-container">
+            <a href="/" class="logo">
+                <span class="logo-yt">YT</span>
+                <span class="logo-arena">Arena</span>
+            </a>
+            <div class="nav-links">
+                <a href="/" class="active">Dashboard</a>
+                <a href="https://github.com/Brajesh2022/yt-arena-prototype" target="_blank">GitHub</a>
+            </div>
+        </div>
+    </nav>
+
+    <main class="container">
+        <header class="hero">
+            <h1>The Ultimate YouTube <span class="gradient-text">Evaluation Arena</span></h1>
+            <p>AI-powered deep analysis of content quality, credibility, and neutrality.</p>
+        </header>
+
+        <section class="dashboard">
+            <div class="dashboard-header">
+                <h2>Top Ranked Channels</h2>
+                <div class="filter-controls">
+                    <button class="filter-btn active" data-filter="all">All</button>
+                    <button class="filter-btn" data-filter="NEUTRAL">Neutral</button>
+                    <button class="filter-btn" data-filter="LEFT">Left-Leaning</button>
+                    <button class="filter-btn" data-filter="RIGHT">Right-Leaning</button>
+                </div>
+            </div>
+
+            <div id="channels-grid" class="channels-grid">
+                <!-- Channels will be injected here via JS -->
+                <div class="loading-state">
+                    <div class="spinner"></div>
+                    <p>Analyzing channels...</p>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <footer>
+        <p>&copy; 2026 YT Arena. Built with AI.</p>
+    </footer>
+
+    <script src="/app.js"></script>
+</body>
+</html>

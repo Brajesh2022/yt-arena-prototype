@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Channel Analysis - YT Arena</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Outfit:wght@500;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/style.css">
+</head>
+<body>
+    <div class="glow-bg glow-1"></div>
+    <div class="glow-bg glow-2"></div>
+    
+    <nav class="navbar">
+        <div class="nav-container">
+            <a href="/" class="logo">
+                <span class="logo-yt">YT</span>
+                <span class="logo-arena">Arena</span>
+            </a>
+            <div class="nav-links">
+                <a href="/">Dashboard</a>
+                <a href="https://github.com/Brajesh2022/yt-arena-prototype" target="_blank">GitHub</a>
+            </div>
+        </div>
+    </nav>
+
+    <main class="container">
+        <div id="channel-loading" class="loading-state">
+            <div class="spinner"></div>
+            <p>Loading channel insights...</p>
+        </div>
+
+        <section id="channel-content" class="channel-view" style="display: none;">
+            <div class="channel-header-card">
+                <h1 id="channel-name">Channel Name</h1>
+                <p id="channel-handle" class="text-secondary">@handle</p>
+                <div class="channel-stats">
+                    <div class="stat-box">
+                        <span class="stat-label">Composite Score</span>
+                        <span class="stat-value" id="channel-score">--</span>
+                    </div>
+                    <div class="stat-box">
+                        <span class="stat-label">Political Bias</span>
+                        <span class="stat-value" id="channel-neutrality">--</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="videos-section">
+                <h2>Evaluated Videos</h2>
+                <div id="videos-list" class="videos-list">
+                    <!-- Videos injected here -->
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <footer>
+        <p>&copy; 2026 YT Arena. Built with AI.</p>
+    </footer>
+
+    <script src="/app.js"></script>
+</body>
+</html>
