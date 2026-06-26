@@ -65,10 +65,6 @@ def get_youtube_metadata(video_id):
         "thumbnail_url": thumbnail,
         "channel_id": channel_id
     }
-            "title": f"Video {video_id}",
-            "thumbnail_url": f"https://img.youtube.com/vi/{video_id}/hqdefault.jpg",
-            "channel_id": None
-        }
 
 def main():
     parser = argparse.ArgumentParser(description="YT Arena Agent CLI")
@@ -90,16 +86,21 @@ def main():
     rate_parser.add_argument("--thumbnail", help="Override thumbnail URL")
     rate_parser.add_argument("--published-at", help="Override published_at (ISO8601)")
 
+    transcript_parser = subparsers.add_parser("transcript", help="Download and simplify transcript for a video")
+    transcript_parser.add_argument("--video-id", required=True)
+
+    args = parser.parse_args()
     args = parser.parse_args()
 
-    url = get_env_or_exit("YT_ARENA_URL")
-    key = get_env_or_exit("YT_ARENA_KEY")
-
     if args.command == "filter":
+        url = get_env_or_exit("YT_ARENA_URL")
+        key = get_env_or_exit("YT_ARENA_KEY")
         unrated = api_request(url, "/api/filter-unrated", key, {"ids": args.ids})
         print(json.dumps(unrated))
 
     elif args.command == "rate":
+        url = get_env_or_exit("YT_ARENA_URL")
+        key = get_env_or_exit("YT_ARENA_KEY")
         neutrality_score = 10 - abs(args.neutrality)
         composite = (
             args.quality * 0.30 +
@@ -143,6 +144,43 @@ def main():
             print(f"Calculated Label: {label}")
         else:
             print(f"{RED}Failed to submit: {result}{RESET}")
+    elif args.command == "transcript":
+        try:
+            from youtube_transcript_api import YouTubeTranscriptApi
+        except ImportError:
+            print(f"{RED}youtube-transcript-api is not installed. Run install.sh again or pip install youtube-transcript-api{RESET}")
+            sys.exit(1)
+            
+        print(f"Fetching transcript for {args.video_id}...")
+        try:
+            transcript_list = YouTubeTranscriptApi().list(args.video_id)
+            
+            try:
+                transcript = transcript_list.find_transcript(['en', 'en-US', 'en-GB'])
+                print("Found English transcript.")
+            except Exception:
+                transcript = next(iter(transcript_list))
+                print(f"English not found. Found '{transcript.language}'. Translating to English...")
+                try:
+                    transcript = transcript.translate('en')
+                except Exception as e:
+                    print(f"{YELLOW}Could not translate to English. Keeping original. ({e}){RESET}")
+                    
+            transcript_data = transcript.fetch()
+            
+            text_lines = []
+            for item in transcript_data:
+                text = item['text'] if isinstance(item, dict) else item.text
+                text_lines.append(text.replace('\n', ' '))
+            full_text = " ".join(text_lines)
+            
+            filename = f"transcript_{args.video_id}.txt"
+            with open(filename, 'w', encoding='utf-8') as f:
+                f.write(full_text)
+                
+            print(f"{GREEN}Success! Transcript saved to {filename}{RESET}")
+        except Exception as e:
+            print(f"{RED}Failed to fetch transcript: {e}{RESET}")
             sys.exit(1)
 
 if __name__ == "__main__":

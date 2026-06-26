@@ -1,6 +1,8 @@
 #!/usr/bin/env bash
 set -e
 
+echo "Installing dependencies..."
+pip install --upgrade youtube-transcript-api
 echo "Installing yt-rater CLI..."
 
 SCRIPT_URL="https://raw.githubusercontent.com/Brajesh2022/yt-arena-prototype/master/cli/yt_rater.py"
