@@ -56,17 +56,6 @@ def get_youtube_metadata(video_id):
     except Exception:
         pass
 
-    # 2. Try to scrape the true UC... channel ID from the HTML (for RSS compatibility)
-    try:
-        html_url = f"https://www.youtube.com/watch?v={video_id}"
-        req_html = urllib.request.Request(html_url, headers={'User-Agent': 'Mozilla/5.0'})
-        html = urllib.request.urlopen(req_html, timeout=5).read().decode('utf-8')
-        match = re.search(r'"channelId":"(UC[^"]+)"', html)
-        if match:
-            channel_id = match.group(1)
-    except Exception:
-        # If HTML scrape fails (e.g. timeout), rely on the oEmbed fallback handle
-        pass
 
     if not channel_id:
         print(f"{YELLOW}Warning: Could not fetch YouTube metadata for {video_id}.{RESET}")
