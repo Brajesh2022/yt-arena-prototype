@@ -56,7 +56,7 @@ jobs:
           
           # Read the array of videos
           jq -c '.[]' cli/new_videos.json | while read i; do
-            VIDEO_ID=$(echo "$i" | jq -r '.id')
+            VIDEO_ID=$(echo "$i" | jq -r '.video_id')
             TITLE=$(echo "$i" | jq -r '.title')
             CHANNEL_NAME=$(echo "$i" | jq -r '.channel_name')
             CHANNEL_ID=$(echo "$i" | jq -r '.channel_id')
