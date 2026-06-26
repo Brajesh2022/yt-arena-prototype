@@ -145,8 +145,15 @@ def main():
         else:
             print(f"{RED}Failed to submit: {result}{RESET}")
     elif args.command == "transcript":
-        url = get_env_or_exit("YT_ARENA_URL")
-        key = get_env_or_exit("YT_ARENA_KEY")
+        url = os.environ.get("YT_ARENA_URL")
+        key = os.environ.get("YT_ARENA_KEY")
+        
+        if not url or not key:
+            print(f"{YELLOW}Warning: YT_ARENA_URL or YT_ARENA_KEY not set. Cannot fetch transcript via Cloudflare API. Using empty transcript fallback.{RESET}")
+            filename = f"transcript_{args.video_id}.txt"
+            with open(filename, 'w', encoding='utf-8') as f:
+                f.write("[Transcript blocked. YT_ARENA_URL/KEY not configured. Rate this video purely based on Title, Channel, and Metadata]")
+            sys.exit(0)
             
         print(f"Fetching transcript for {args.video_id} via Cloudflare API...")
         try:
@@ -171,9 +178,6 @@ def main():
             filename = f"transcript_{args.video_id}.txt"
             with open(filename, 'w', encoding='utf-8') as f:
                 f.write("[Transcript blocked by YouTube IP limits. Rate this video purely based on Title, Channel, and Metadata]")
-            # Exit 0 so the automation workflow can still proceed without transcript
-            sys.exit(0)
-            # Exit 0 so the automation workflow can still proceed without transcript
             sys.exit(0)
 
 if __name__ == "__main__":
