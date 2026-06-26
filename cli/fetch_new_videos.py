@@ -1,13 +1,13 @@
 #!/usr/bin/env python3
 import sys
 import json
-import urllib.request
-import xml.etree.ElementTree as ET
-from datetime import datetime, timedelta, timezone
-
-import re
+import os
+import subprocess
+from datetime import datetime, timezone
 
 def resolve_handle_to_id(handle):
+    import urllib.request
+    import re
     url = f"https://www.youtube.com/{handle}"
     req = urllib.request.Request(url, headers={'User-Agent': 'Mozilla/5.0'})
     try:
@@ -15,81 +15,51 @@ def resolve_handle_to_id(handle):
         match = re.search(r'<meta itemprop="identifier" content="(UC[^"]+)">', html)
         if match:
             return match.group(1)
-        match2 = re.search(r'channel_id=([a-zA-Z0-9_-]+)', html)
-        if match2:
-            return match2.group(1)
     except Exception:
         pass
     return handle
 
-def fetch_recent_videos(channel_id, channel_name, hours=25):
+def fetch_latest_videos(channel_id, channel_name):
+    """
+    Fetches the latest 3 videos using yt-dlp flat-playlist.
+    This completely bypasses YouTube RSS and its 404 blocks.
+    """
     if channel_id.startswith('@'):
         print(f"Resolving handle {channel_id} to Channel ID...", file=sys.stderr)
         channel_id = resolve_handle_to_id(channel_id)
-        
-    url = f"https://www.youtube.com/feeds/videos.xml?channel_id={channel_id}"
+
+    url = f"https://www.youtube.com/channel/{channel_id}"
     
     try:
-        import subprocess
-        # Using curl to bypass Python's urllib getting blocked by YouTube
         result = subprocess.run(
-            ["curl", "-sL", 
-             "-H", "User-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64)", 
-             url],
-            capture_output=True, text=True, timeout=15
+            ["yt-dlp", "--flat-playlist", "--playlist-end", "3", "--print", "%(id)s|%(title)s", url],
+            capture_output=True, text=True, timeout=20
         )
-        if result.returncode != 0 or not result.stdout.strip():
-            print(f"Error fetching RSS for {channel_name} ({channel_id}): curl failed or returned empty", file=sys.stderr)
+        if result.returncode != 0:
+            print(f"Error fetching videos for {channel_name} ({channel_id}): {result.stderr}", file=sys.stderr)
             return []
-        xml_data = result.stdout
+            
+        videos = []
+        for line in result.stdout.strip().split('\n'):
+            if not line or '|' not in line:
+                continue
+            vid_id, title = line.split('|', 1)
+            videos.append({
+                "video_id": vid_id.strip(),
+                "title": title.strip(),
+                "channel_id": channel_id,
+                "channel_name": channel_name,
+                "published_at": datetime.now(timezone.utc).isoformat()  # Extracted today
+            })
+        return videos
     except Exception as e:
-        print(f"Error fetching RSS for {channel_name} ({channel_id}): {e}", file=sys.stderr)
+        print(f"Error fetching videos for {channel_name} ({channel_id}): {e}", file=sys.stderr)
         return []
-        
-    try:
-        root = ET.fromstring(xml_data)
-    except Exception as e:
-        print(f"Error parsing XML for {channel_id}: {e}", file=sys.stderr)
-        return []
-        
-    ns = {
-        'atom': 'http://www.w3.org/2005/Atom',
-        'yt': 'http://www.youtube.com/xml/schemas/2015'
-    }
-    
-    recent_videos = []
-    now = datetime.now(timezone.utc)
-    threshold = now - timedelta(hours=hours)
-    
-    for entry in root.findall('atom:entry', ns):
-        try:
-            video_id = entry.find('yt:videoId', ns).text
-            title = entry.find('atom:title', ns).text
-            published_str = entry.find('atom:published', ns).text
-            
-            # YouTube format: '2023-10-25T14:30:00+00:00'
-            # Convert to a clean datetime object in UTC
-            # Replacing +00:00 with +0000 for strict older python compatibility if needed
-            clean_str = published_str.replace('+00:00', '+0000')
-            published = datetime.strptime(clean_str, "%Y-%m-%dT%H:%M:%S%z")
-            
-            if published >= threshold:
-                recent_videos.append({
-                    "video_id": video_id,
-                    "title": title,
-                    "channel_id": channel_id,
-                    "channel_name": channel_name,
-                    "published_at": published_str
-                })
-        except Exception as e:
-            print(f"Error parsing entry in {channel_id}: {e}", file=sys.stderr)
-            continue
-            
-    return recent_videos
 
 def main():
     channels_file = "channels.json"
     output_file = "new_videos.json"
+    state_file = "rated_videos_state.json"
     
     if len(sys.argv) > 1:
         channels_file = sys.argv[1]
@@ -103,6 +73,15 @@ def main():
         print(f"Failed to load {channels_file}: {e}", file=sys.stderr)
         sys.exit(1)
         
+    # Load state (previously processed videos)
+    processed_videos = []
+    if os.path.exists(state_file):
+        try:
+            with open(state_file, 'r', encoding='utf-8') as f:
+                processed_videos = json.load(f)
+        except Exception:
+            pass
+            
     all_new_videos = []
     
     for ch in channels:
@@ -112,16 +91,24 @@ def main():
             continue
             
         print(f"Checking {ch_name}...", file=sys.stderr)
-        videos = fetch_recent_videos(ch_id, ch_name, hours=25)
-        all_new_videos.extend(videos)
+        latest_videos = fetch_latest_videos(ch_id, ch_name)
+        
+        for video in latest_videos:
+            if video["video_id"] not in processed_videos:
+                all_new_videos.append(video)
+                processed_videos.append(video["video_id"]) # Mark as processed
         
     try:
         with open(output_file, 'w', encoding='utf-8') as f:
             json.dump(all_new_videos, f, indent=2, ensure_ascii=False)
-        print(f"\nSuccess! Found {len(all_new_videos)} new videos in the last 25 hours.", file=sys.stderr)
+            
+        with open(state_file, 'w', encoding='utf-8') as f:
+            json.dump(processed_videos, f, indent=2)
+            
+        print(f"\nSuccess! Found {len(all_new_videos)} new unprocessed videos.", file=sys.stderr)
         print(f"Saved to {output_file}", file=sys.stderr)
     except Exception as e:
-        print(f"Failed to save {output_file}: {e}", file=sys.stderr)
+        print(f"Failed to save results: {e}", file=sys.stderr)
         sys.exit(1)
 
 if __name__ == "__main__":

@@ -6,7 +6,7 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: read
+  contents: write
 
 jobs:
   rate-videos:
@@ -101,3 +101,11 @@ jobs:
             # Clean up
             rm prompt.txt "cli/transcript_${VIDEO_ID}.txt"
           done
+
+      - name: Commit State File
+        run: |
+          git config --global user.name "Brajesh"
+          git config --global user.email "138358890+Brajesh2022@users.noreply.github.com"
+          git add cli/rated_videos_state.json
+          git diff --quiet && git diff --staged --quiet || git commit -m "Update rated videos state"
+          git push

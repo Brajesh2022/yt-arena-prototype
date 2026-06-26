@@ -2,7 +2,7 @@
 set -e
 
 echo "Installing dependencies..."
-pip install --upgrade youtube-transcript-api
+pip install --upgrade youtube-transcript-api yt-dlp
 echo "Installing yt-rater CLI..."
 
 SCRIPT_URL="https://raw.githubusercontent.com/Brajesh2022/yt-arena-prototype/master/cli/yt_rater.py"
