@@ -8,8 +8,7 @@ PROJECT_NAME="yt-arena-prototype"
 
 cd ~/yt-arena-prototype
 rm -f project.zip
-cd public && zip -r ../project.zip * && cd ..
-zip -r project.zip functions package.json
+zip -r project.zip index.html channel.html style.css app.js functions package.json
 curl -s -X POST "https://api.cloudflare.com/client/v4/accounts/$ACCOUNT_ID/pages/projects/$PROJECT_NAME/deployments" \
   -H "Authorization: Bearer $TOKEN" \
   -F "file=@project.zip" > deploy_result.json
