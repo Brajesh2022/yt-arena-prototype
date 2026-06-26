@@ -28,16 +28,20 @@ def fetch_recent_videos(channel_id, channel_name, hours=25):
         channel_id = resolve_handle_to_id(channel_id)
         
     url = f"https://www.youtube.com/feeds/videos.xml?channel_id={channel_id}"
-    headers = {
-        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-        'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8',
-        'Accept-Language': 'en-US,en;q=0.5',
-    }
-    req = urllib.request.Request(url, headers=headers)
     
     try:
-        resp = urllib.request.urlopen(req, timeout=10)
-        xml_data = resp.read()
+        import subprocess
+        # Using curl to bypass Python's urllib getting blocked by YouTube
+        result = subprocess.run(
+            ["curl", "-sL", 
+             "-H", "User-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64)", 
+             url],
+            capture_output=True, text=True, timeout=15
+        )
+        if result.returncode != 0 or not result.stdout.strip():
+            print(f"Error fetching RSS for {channel_name} ({channel_id}): curl failed or returned empty", file=sys.stderr)
+            return []
+        xml_data = result.stdout
     except Exception as e:
         print(f"Error fetching RSS for {channel_name} ({channel_id}): {e}", file=sys.stderr)
         return []
