@@ -145,45 +145,34 @@ def main():
         else:
             print(f"{RED}Failed to submit: {result}{RESET}")
     elif args.command == "transcript":
+        url = get_env_or_exit("YT_ARENA_URL")
+        key = get_env_or_exit("YT_ARENA_KEY")
+            
+        print(f"Fetching transcript for {args.video_id} via Cloudflare API...")
         try:
-            from youtube_transcript_api import YouTubeTranscriptApi
-        except ImportError:
-            print(f"{RED}youtube-transcript-api is not installed. Run install.sh again or pip install youtube-transcript-api{RESET}")
-            sys.exit(1)
+            req = urllib.request.Request(f"{url.rstrip('/')}/api/transcript?videoId={args.video_id}")
+            req.add_header('Authorization', f'Bearer {key}')
+            req.add_header('User-Agent', 'Mozilla/5.0 (compatible; YTRaterCLI/1.0)')
             
-        print(f"Fetching transcript for {args.video_id}...")
-        try:
-            transcript_list = YouTubeTranscriptApi().list(args.video_id)
+            resp = urllib.request.urlopen(req, timeout=30)
+            data = json.loads(resp.read().decode('utf-8'))
             
-            try:
-                transcript = transcript_list.find_transcript(['en', 'en-US', 'en-GB'])
-                print("Found English transcript.")
-            except Exception:
-                transcript = next(iter(transcript_list))
-                print(f"English not found. Found '{transcript.language}'. Translating to English...")
-                try:
-                    transcript = transcript.translate('en')
-                except Exception as e:
-                    print(f"{YELLOW}Could not translate to English. Keeping original. ({e}){RESET}")
-                    
-            transcript_data = transcript.fetch()
-            
-            text_lines = []
-            for item in transcript_data:
-                text = item['text'] if isinstance(item, dict) else item.text
-                text_lines.append(text.replace('\n', ' '))
-            full_text = " ".join(text_lines)
-            
-            filename = f"transcript_{args.video_id}.txt"
-            with open(filename, 'w', encoding='utf-8') as f:
-                f.write(full_text)
+            if data.get("success"):
+                full_text = data.get("transcript", "")
+                filename = f"transcript_{args.video_id}.txt"
+                with open(filename, 'w', encoding='utf-8') as f:
+                    f.write(full_text)
+                print(f"{GREEN}Success! Transcript saved to {filename}{RESET}")
+            else:
+                raise Exception(data.get("error", "Unknown API Error"))
                 
-            print(f"{GREEN}Success! Transcript saved to {filename}{RESET}")
         except Exception as e:
-            print(f"{YELLOW}Warning: Failed to fetch transcript due to YouTube IP blocks. Using empty transcript fallback.{RESET}")
+            print(f"{YELLOW}Warning: Failed to fetch transcript via API ({e}). Using empty transcript fallback.{RESET}")
             filename = f"transcript_{args.video_id}.txt"
             with open(filename, 'w', encoding='utf-8') as f:
                 f.write("[Transcript blocked by YouTube IP limits. Rate this video purely based on Title, Channel, and Metadata]")
+            # Exit 0 so the automation workflow can still proceed without transcript
+            sys.exit(0)
             # Exit 0 so the automation workflow can still proceed without transcript
             sys.exit(0)
 
