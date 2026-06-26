@@ -6,6 +6,7 @@ import urllib.request
 import urllib.error
 import json
 from datetime import datetime, timezone
+import re
 
 GREEN = '\033[92m'
 RED = '\033[91m'
@@ -36,20 +37,48 @@ def api_request(url, endpoint, key, payload):
         sys.exit(1)
 
 def get_youtube_metadata(video_id):
+    title = f"Video {video_id}"
+    thumbnail = f"https://img.youtube.com/vi/{video_id}/hqdefault.jpg"
+    channel_id = None
+    
+    # 1. Try to get title, thumbnail, and fallback handle from oEmbed
     oembed_url = f"https://www.youtube.com/oembed?url=https://www.youtube.com/watch?v={video_id}&format=json"
-    req = urllib.request.Request(oembed_url, headers={'User-Agent': 'Mozilla/5.0 (compatible; YTRaterCLI/1.0)'})
+    req_oembed = urllib.request.Request(oembed_url, headers={'User-Agent': 'Mozilla/5.0'})
     try:
-        resp = urllib.request.urlopen(req)
+        resp = urllib.request.urlopen(req_oembed, timeout=5)
         data = json.loads(resp.read().decode('utf-8'))
-        return {
-            "title": data.get("title", "Unknown Title"),
-            "thumbnail_url": data.get("thumbnail_url", f"https://img.youtube.com/vi/{video_id}/hqdefault.jpg")
-        }
-    except Exception as e:
-        print(f"{YELLOW}Warning: Could not fetch YouTube metadata for {video_id}. Using defaults. ({e}){RESET}")
-        return {
+        title = data.get("title", title)
+        thumbnail = data.get("thumbnail_url", thumbnail)
+        
+        author_url = data.get("author_url", "")
+        if author_url:
+            channel_id = author_url.rstrip('/').split('/')[-1]
+    except Exception:
+        pass
+
+    # 2. Try to scrape the true UC... channel ID from the HTML (for RSS compatibility)
+    try:
+        html_url = f"https://www.youtube.com/watch?v={video_id}"
+        req_html = urllib.request.Request(html_url, headers={'User-Agent': 'Mozilla/5.0'})
+        html = urllib.request.urlopen(req_html, timeout=5).read().decode('utf-8')
+        match = re.search(r'"channelId":"(UC[^"]+)"', html)
+        if match:
+            channel_id = match.group(1)
+    except Exception:
+        # If HTML scrape fails (e.g. timeout), rely on the oEmbed fallback handle
+        pass
+
+    if not channel_id:
+        print(f"{YELLOW}Warning: Could not fetch YouTube metadata for {video_id}.{RESET}")
+    
+    return {
+        "title": title,
+        "thumbnail_url": thumbnail,
+        "channel_id": channel_id
+    }
             "title": f"Video {video_id}",
-            "thumbnail_url": f"https://img.youtube.com/vi/{video_id}/hqdefault.jpg"
+            "thumbnail_url": f"https://img.youtube.com/vi/{video_id}/hqdefault.jpg",
+            "channel_id": None
         }
 
 def main():
@@ -61,7 +90,7 @@ def main():
 
     rate_parser = subparsers.add_parser("rate", help="Submit a new video rating")
     rate_parser.add_argument("--video-id", required=True)
-    rate_parser.add_argument("--channel-id", required=True)
+    rate_parser.add_argument("--channel-id", required=False, help="Optional. Will be auto-extracted if omitted.")
     rate_parser.add_argument("--quality", type=float, required=True, help="0 to 10")
     rate_parser.add_argument("--credibility", type=float, required=True, help="0 to 10")
     rate_parser.add_argument("--rationality", type=float, required=True, help="0 to 10")
