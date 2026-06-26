@@ -1,0 +1,103 @@
+name: Rate New Videos
+
+on:
+  schedule:
+    - cron: '0 * * * *' # Run every hour
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  rate-videos:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install yt-rater and dependencies
+        run: |
+          bash cli/install.sh
+          pip install youtube-transcript-api
+          
+      - name: Install Antigravity (agy)
+        run: |
+          curl -sSL https://antigravity.google/cli/install.sh | bash
+          
+      - name: Fetch and Process New Videos
+        env:
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          YT_ARENA_URL: ${{ secrets.YT_ARENA_URL }}
+          YT_ARENA_KEY: ${{ secrets.YT_ARENA_KEY }}
+        run: |
+          export PATH="$HOME/.local/bin:$HOME/bin:$PATH"
+          
+          echo "Fetching new videos from channels..."
+          cd cli
+          python fetch_new_videos.py
+          
+          if [ ! -f new_videos.json ]; then
+            echo "No new videos found."
+            exit 0
+          fi
+          
+          # Move back to root so agy can find AGENTS.md
+          cd ..
+          
+          # Read the array of videos
+          jq -c '.[]' cli/new_videos.json | while read i; do
+            VIDEO_ID=$(echo "$i" | jq -r '.id')
+            TITLE=$(echo "$i" | jq -r '.title')
+            CHANNEL_NAME=$(echo "$i" | jq -r '.channel_name')
+            CHANNEL_ID=$(echo "$i" | jq -r '.channel_id')
+            PUBLISHED_AT=$(echo "$i" | jq -r '.published_at')
+            THUMBNAIL_URL=$(echo "$i" | jq -r '.thumbnail_url')
+            
+            echo "Processing video $VIDEO_ID: $TITLE"
+            
+            # Extract Transcript
+            cd cli
+            python yt_rater.py transcript --video-id "$VIDEO_ID"
+            cd ..
+            
+            if [ ! -f "cli/transcript_${VIDEO_ID}.txt" ]; then
+              echo "Transcript not found for $VIDEO_ID. Skipping."
+              continue
+            fi
+            
+            TRANSCRIPT=$(cat "cli/transcript_${VIDEO_ID}.txt")
+            
+            # Run agy headlessly
+            cat <<PROMPT > prompt.txt
+          Please rate the following YouTube video according to your AGENTS.md guidelines.
+          You must run the 'yt-rater rate' command and then output exactly DONE.
+          
+          Title: $TITLE
+          Channel: $CHANNEL_NAME
+          Channel ID: $CHANNEL_ID
+          Video ID: $VIDEO_ID
+          Published: $PUBLISHED_AT
+          Thumbnail: $THUMBNAIL_URL
+          
+          --- TRANSCRIPT ---
+          $TRANSCRIPT
+          --- END TRANSCRIPT ---
+          PROMPT
+            
+            echo "Running Antigravity AI Agent for $VIDEO_ID..."
+            cat prompt.txt | agy --print-timeout 30m --model "Gemini 3.5 Flash (Low)" --dangerously-skip-permissions
+            echo "Finished processing $VIDEO_ID."
+            
+            # Clean up
+            rm prompt.txt "cli/transcript_${VIDEO_ID}.txt"
+          done
