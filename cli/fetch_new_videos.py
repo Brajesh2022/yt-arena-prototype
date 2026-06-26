@@ -5,7 +5,28 @@ import urllib.request
 import xml.etree.ElementTree as ET
 from datetime import datetime, timedelta, timezone
 
+import re
+
+def resolve_handle_to_id(handle):
+    url = f"https://www.youtube.com/{handle}"
+    req = urllib.request.Request(url, headers={'User-Agent': 'Mozilla/5.0'})
+    try:
+        html = urllib.request.urlopen(req, timeout=10).read().decode('utf-8')
+        match = re.search(r'<meta itemprop="identifier" content="(UC[^"]+)">', html)
+        if match:
+            return match.group(1)
+        match2 = re.search(r'channel_id=([a-zA-Z0-9_-]+)', html)
+        if match2:
+            return match2.group(1)
+    except Exception:
+        pass
+    return handle
+
 def fetch_recent_videos(channel_id, channel_name, hours=25):
+    if channel_id.startswith('@'):
+        print(f"Resolving handle {channel_id} to Channel ID...", file=sys.stderr)
+        channel_id = resolve_handle_to_id(channel_id)
+        
     url = f"https://www.youtube.com/feeds/videos.xml?channel_id={channel_id}"
     req = urllib.request.Request(url, headers={'User-Agent': 'Mozilla/5.0'})
     
