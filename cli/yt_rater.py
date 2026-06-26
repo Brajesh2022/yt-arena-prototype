@@ -5,6 +5,7 @@ import argparse
 import urllib.request
 import urllib.error
 import json
+from datetime import datetime, timezone
 
 GREEN = '\033[92m'
 RED = '\033[91m'
@@ -34,6 +35,23 @@ def api_request(url, endpoint, key, payload):
         print(f"{RED}URL Error: {e.reason}{RESET}")
         sys.exit(1)
 
+def get_youtube_metadata(video_id):
+    oembed_url = f"https://www.youtube.com/oembed?url=https://www.youtube.com/watch?v={video_id}&format=json"
+    req = urllib.request.Request(oembed_url, headers={'User-Agent': 'Mozilla/5.0 (compatible; YTRaterCLI/1.0)'})
+    try:
+        resp = urllib.request.urlopen(req)
+        data = json.loads(resp.read().decode('utf-8'))
+        return {
+            "title": data.get("title", "Unknown Title"),
+            "thumbnail_url": data.get("thumbnail_url", f"https://img.youtube.com/vi/{video_id}/hqdefault.jpg")
+        }
+    except Exception as e:
+        print(f"{YELLOW}Warning: Could not fetch YouTube metadata for {video_id}. Using defaults. ({e}){RESET}")
+        return {
+            "title": f"Video {video_id}",
+            "thumbnail_url": f"https://img.youtube.com/vi/{video_id}/hqdefault.jpg"
+        }
+
 def main():
     parser = argparse.ArgumentParser(description="YT Arena Agent CLI")
     subparsers = parser.add_subparsers(dest="command", required=True)
@@ -44,14 +62,15 @@ def main():
     rate_parser = subparsers.add_parser("rate", help="Submit a new video rating")
     rate_parser.add_argument("--video-id", required=True)
     rate_parser.add_argument("--channel-id", required=True)
-    rate_parser.add_argument("--title", required=True)
-    rate_parser.add_argument("--thumbnail", required=True)
-    rate_parser.add_argument("--published-at", required=True, help="ISO8601 datetime")
     rate_parser.add_argument("--quality", type=float, required=True, help="0 to 10")
     rate_parser.add_argument("--credibility", type=float, required=True, help="0 to 10")
     rate_parser.add_argument("--rationality", type=float, required=True, help="0 to 10")
     rate_parser.add_argument("--neutrality", type=float, required=True, help="-10 to 10")
     rate_parser.add_argument("--summary", required=True)
+    
+    rate_parser.add_argument("--title", help="Override video title")
+    rate_parser.add_argument("--thumbnail", help="Override thumbnail URL")
+    rate_parser.add_argument("--published-at", help="Override published_at (ISO8601)")
 
     args = parser.parse_args()
 
@@ -77,12 +96,18 @@ def main():
         else:
             label = "NEUTRAL"
 
+        metadata = get_youtube_metadata(args.video_id)
+        
+        title = args.title if args.title else metadata["title"]
+        thumbnail = args.thumbnail if args.thumbnail else metadata["thumbnail_url"]
+        published_at = args.published_at if args.published_at else datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+
         payload = {
             "yt_video_id": args.video_id,
             "channel_id": args.channel_id,
-            "title": args.title,
-            "thumbnail_url": args.thumbnail,
-            "published_at": args.published_at,
+            "title": title,
+            "thumbnail_url": thumbnail,
+            "published_at": published_at,
             "quality": args.quality,
             "credibility": args.credibility,
             "rationality": args.rationality,
@@ -92,6 +117,7 @@ def main():
             "summary": args.summary
         }
         
+        print(f"Submitting rating for {title}...")
         result = api_request(url, "/api/rate-video", key, payload)
         if result.get("success"):
             print(f"{GREEN}Successfully submitted rating for {args.video_id}!{RESET}")
