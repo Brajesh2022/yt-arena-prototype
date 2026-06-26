@@ -45,6 +45,7 @@ jobs:
           mkdir -p ~/.gemini/antigravity-cli
           echo "$AGY_OAUTH_TOKEN" > ~/.gemini/antigravity-cli/antigravity-oauth-token
           
+          bash ./cli/install.sh
           echo "Fetching new videos from channels..."
           cd cli
           python fetch_new_videos.py
@@ -73,7 +74,7 @@ jobs:
             python yt_rater.py transcript --video-id "$VIDEO_ID"
             cd ..
             
-            if [ ! -f "cli/transcript_${VIDEO_ID}.txt" ]; then
+            python yt_rater.py transcript --video-id="$VIDEO_ID"
               echo "Transcript not found for $VIDEO_ID. Skipping."
               continue
             fi
