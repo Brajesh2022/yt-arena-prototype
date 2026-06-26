@@ -39,8 +39,11 @@ jobs:
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
           YT_ARENA_URL: ${{ secrets.YT_ARENA_URL }}
           YT_ARENA_KEY: ${{ secrets.YT_ARENA_KEY }}
+          AGY_OAUTH_TOKEN: ${{ secrets.AGY_OAUTH_TOKEN }}
         run: |
           export PATH="$HOME/.local/bin:$HOME/bin:$PATH"
+          mkdir -p ~/.gemini/antigravity-cli
+          echo "$AGY_OAUTH_TOKEN" > ~/.gemini/antigravity-cli/antigravity-oauth-token
           
           echo "Fetching new videos from channels..."
           cd cli
