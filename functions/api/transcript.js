@@ -1,4 +1,4 @@
-import { YoutubeTranscript } from 'youtube-transcript';
+import { YoutubeTranscript } from './youtube-transcript.js';
 
 export async function onRequestGet({ request, env }) {
   const url = new URL(request.url);
